@@ -1,0 +1,64 @@
+let print_file ~filename s =
+  let oc = open_out filename in
+  output_string oc s;
+  flush oc;
+  close_out oc;
+;;
+
+let dump_dir (dir) =
+  if Sys.is_directory dir then
+  let dc = Sys.readdir dir in
+  let indent n =
+    let ndt = Array.init n (fun _ -> "&nbsp;") in
+    String.concat " " (Array.to_list ndt)
+  in
+  let rec aux i pr dc =
+    let b = Buffer.create 1023 in
+    Printf.kprintf (Buffer.add_string b) "<html>\n";
+    Printf.kprintf (Buffer.add_string b) "<body>\n";
+    let ndt = indent i in
+    let dc = 
+      Array.map (fun cn -> String.concat "/" [pr; cn]) dc
+    in
+    Array.sort String.compare dc;
+    let ds, fs =
+      List.partition (fun cn -> Sys.is_directory cn) (Array.to_list dc)
+    in
+    List.iter (fun cn ->
+      Printf.kprintf (Buffer.add_string b) " %s [FILE] <a href='%s'>%s</a>" ndt cn cn;
+      Printf.kprintf (Buffer.add_string b) "<br />\n";
+    ) fs;
+    List.iter (fun cn ->
+      Printf.kprintf (Buffer.add_string b) "\n";
+      Printf.kprintf (Buffer.add_string b) " %s [DIR] %s/" ndt cn;
+      Printf.kprintf (Buffer.add_string b) "<br />\n";
+      let s, fn = aux (succ i) cn (Sys.readdir cn) in
+      print_file ~filename:fn s
+    ) ds;
+    Printf.kprintf (Buffer.add_string b) "</body>\n";
+    Printf.kprintf (Buffer.add_string b) "</html>\n";
+    let filename = pr ^ "/" ^ "index.html" in
+    ((Buffer.contents b), filename)
+  in
+  let s, fn = aux 0 dir dc in
+  print_file ~filename:fn s
+;;
+
+let dir_name dir =
+  let len = String.length dir in
+  let dir = if dir.[len-1] = '/' then String.sub dir 0 (len-1) else dir in
+  (dir)
+
+let main (dirs) =
+  List.iter (fun dir ->
+    let dir = dir_name dir in
+    dump_dir (dir);
+  ) dirs;
+;;
+
+let () =
+  let dirs = List.tl (Array.to_list Sys.argv) in
+  let dirs = List.filter (fun dir -> Sys.is_directory dir) dirs in
+  let dirs = if (List.length dirs) = 0 then  ["."] else dirs in
+  main (dirs)
+

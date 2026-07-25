@@ -1,0 +1,52 @@
+let dump_dir (dir) =
+  if Sys.is_directory dir then
+  let dc = Sys.readdir dir in
+  let indent n =
+    let ndt = Array.init n (fun _ -> "&nbsp;") in
+    String.concat " " (Array.to_list ndt)
+  in
+  let rec aux i pr dc =
+    let ndt = indent i in
+    let dc = 
+      Array.map (fun cn -> String.concat "/" [pr; cn]) dc
+    in
+    Array.sort String.compare dc;
+    let ds, fs =
+      List.partition (fun cn -> Sys.is_directory cn) (Array.to_list dc)
+    in
+    List.iter (fun cn ->
+      Printf.printf " %s [FILE] <a href='%s'>%s</a>" ndt cn cn;
+      Printf.printf "<br />\n";
+    ) fs;
+    List.iter (fun cn ->
+      print_newline ();
+      Printf.printf " %s [DIR] %s/" ndt cn;
+      Printf.printf "<br />\n";
+      aux (succ i) cn (Sys.readdir cn)
+    ) ds;
+  in
+  aux 0 dir(* "." *) dc;
+;;
+
+let dir_name dir =
+  let len = String.length dir in
+  let dir = if dir.[len-1] = '/' then String.sub dir 0 (len-1) else dir in
+  (dir)
+
+let main (dirs) =
+  Printf.printf "<html>\n";
+  Printf.printf "<body>\n";
+  List.iter (fun dir ->
+    let dir = dir_name dir in
+    dump_dir (dir);
+  ) dirs;
+  Printf.printf "</body>\n";
+  Printf.printf "</html>\n";
+;;
+
+let () =
+  let dirs = List.tl (Array.to_list Sys.argv) in
+  let dirs = List.filter (fun dir -> Sys.is_directory dir) dirs in
+  let dirs = if (List.length dirs) = 0 then  ["."] else dirs in
+  main (dirs)
+
